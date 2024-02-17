@@ -1,29 +1,13 @@
-esphome:
-  name: ltr501-test
+Preliminary ver for LTR-501ALS (ALS + PS) and LTR-301ALS (ALS only)
 
-esp32:
-  board: esp32dev
-  framework:
-    type: arduino
 
-# esp8266:
-#   board: nodemcuv2
-
-logger:
-  level: DEBUG
-
+```
 external_components:
-#  - source: 
-#      type: local
-#      path: ../components
    - source: github://latonita/esphome-ltr501
      components: [ ltr501 ]
 
 i2c:
-  sda: GPIO14
-  scl: GPIO26
-  frequency: 5kHz
-  scan: true
+#...
 
 sensor:
   - platform: ltr501
@@ -53,3 +37,5 @@ sensor:
 
     ps_counts:
       name: "Proximity counts" 
+
+```
