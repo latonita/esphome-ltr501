@@ -41,8 +41,8 @@ enum class CommandRegisters : uint8_t {
 
 // ALS Sensor gain levels
 enum AlsGain501 : uint8_t {
-  GAIN_1 = 0,  // default
-  GAIN_192 = 1,
+  GAIN_1 = 0,    // GAIN_RANGE_2 // default
+  GAIN_200 = 1,  // GAIN_RANGE_1
 };
 static const uint8_t GAINS_COUNT = 2;
 

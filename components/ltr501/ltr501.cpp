@@ -52,7 +52,7 @@ static uint16_t get_meas_time_ms(MeasurementRepeatRate rate) {
   return ALS_MEAS_RATE[rate & 0b111];
 }
 
-static float get_gain_coeff(AlsGain501 gain) { return gain == AlsGain501::GAIN_1 ? 1.0f : 192.0f; }
+static float get_gain_coeff(AlsGain501 gain) { return gain == AlsGain501::GAIN_1 ? 1.0f : 200.0f; }
 
 static float get_ps_gain_coeff(PsGain501 gain) {
   static const float PS_GAIN[4] = {1, 4, 8, 16};
@@ -360,7 +360,7 @@ void LTRAlsPs501Component::read_sensor_data_(AlsReadings &data) {
 }
 
 bool LTRAlsPs501Component::are_adjustments_required_(AlsReadings &data) {
-  // for ltr-501/301 we dont do auto adjustments
+  // for ltr-501/301 we dont do auto adjustments yet
   return false;
   /*
   // skip first sample in auto mode -
@@ -371,7 +371,7 @@ bool LTRAlsPs501Component::are_adjustments_required_(AlsReadings &data) {
   // Recommended thresholds as per datasheet
   static const uint16_t LOW_INTENSITY_THRESHOLD = 1000;
   static const uint16_t HIGH_INTENSITY_THRESHOLD = 20000;
-  static const AlsGain501 GAINS[GAINS_COUNT] = {GAIN_1, GAIN_192};
+  static const AlsGain501 GAINS[GAINS_COUNT] = {AlsGain501::GAIN_1, AlsGain501::GAIN_200};
   static const IntegrationTime501 INT_TIMES[TIMES_COUNT] = {
       INTEGRATION_TIME_50MS,  INTEGRATION_TIME_100MS, INTEGRATION_TIME_200MS,INTEGRATION_TIME_400MS};
 
@@ -423,25 +423,6 @@ void LTRAlsPs501Component::apply_lux_calculation_(AlsReadings &data) {
     return;
   }
 
-  /*
-  ratio = alsval_ch1*100 / alsval_ch0;
-
-  if (ratio < 69){
-    luxdata_int = ((1361 * alsval_ch0) - (1500 * alsval_ch1))/1000;
-  }
-  else if ((ratio >= 69) && (ratio < 100)){
-    luxdata_int = ((570 * alsval_ch0) - (345 * alsval_ch1))/1000;
-  }
-  else {
-    luxdata_int = 0;
-  }
-
-  // For Range1
-  if (gainrange == ALS_RANGE1_320)
-    luxdata_int = luxdata_int / 150;
-
-  */
-
   float ch0 = data.ch0;
   float ch1 = data.ch1;
   float ratio = ch1 / (ch0 + ch1);
@@ -449,76 +430,26 @@ void LTRAlsPs501Component::apply_lux_calculation_(AlsReadings &data) {
   float als_time = ((float) get_itime_ms(data.integration_time)) / 100.0f;
   float inv_pfactor = this->glass_attenuation_factor_;
   float lux = 0.0f;
-  float lux2 = 0.0f;
-  float lux3 = 0.0f;
 
   ESP_LOGD(TAG, "Lux calculation: ratio %f, gain %f, int time %f, inv_pfactor %f", ratio, als_gain, als_time,
            inv_pfactor);
 
-  float vis_data = ch0;
-  float ir_data = ch1;
+  // method from
+  // https://github.com/fards/Ainol_fire_kernel/blob/83832cf8a3082fd8e963230f4b1984479d1f1a84/customer/drivers/lightsensor/ltr501als.c#L295
 
-  // LTR501 //
-  // https://github.com/freak07/Kirisakura_SAKE_Zenfone_8/blob/dd0f3c76e82b22b8cf529d8867171bf7eb91b50c/drivers/iio/light/ltr501.c#L305
   if (ratio < 0.45) {
-    lux = 1.774 * vis_data + 1.105 * ir_data;
+    lux = 1.7743 * ch0 + 1.1059 * ch1;
   } else if (ratio < 0.64) {
-    lux = 3.772 * vis_data - 0.133 * ir_data;
+    lux = 3.7725 * ch0 - 1.3363 * ch1;
   } else if (ratio < 0.85) {
-    lux = 1.690 * vis_data - 0.169 * ir_data;
+    lux = 1.6903 * ch0 - 0.1693 * ch1;
   } else {
+    ESP_LOGW(TAG, "Impossible ch1/(ch0 + ch1) ratio");
     lux = 0;
   }
 
-  // second method from
-  // https://github.com/chrmhoffmann/android_kernel_wiko_stairway/blob/d8724c3e5f9c269f790a8a40bb640ccfb653e353/mediatek/custom/common/kernel/alsps/ltr501/ltr501.c#L565
-  if (ratio < 0.69) {
-    lux2 = (1361 * vis_data - 1500 * ir_data) / 1000;
-  } else if (ratio < 1) {
-    lux2 = (570 * vis_data - 345 * ir_data) / 1000;
-  } else {
-    lux2 = 0;
-  }
-  // if (data.actual_gain == AlsGain501::GAIN_192) {
-  //   lux2 /= 150;// ???? why 150. 
-  // }
-
-  // third method from https://github.com/fards/Ainol_fire_kernel/blob/83832cf8a3082fd8e963230f4b1984479d1f1a84/customer/drivers/lightsensor/ltr501als.c#L295
-  if (ratio < 0.45) {
-    lux3 = 1.7743 * vis_data + 1.1059 * ir_data;
-  } else if (ratio < 0.64) {
-    lux3 = 3.7725 * vis_data - 1.3363 * ir_data;
-  } else if (ratio < 0.85) {
-    lux3 = 1.6903 * vis_data - 0.1693 * ir_data;
-  } else {
-    lux3 = 0;
-  }
-
-
-  ESP_LOGD(TAG, "Lux calculations #1: %f, #2: %f, #3: %f", lux, lux2, lux3);
-
-  // LTR303, 559 and others
-  // if (ratio < 0.45) {
-  //   lux = (1.7743 * ch0 + 1.1059 * ch1);
-  // } else if (ratio < 0.64 && ratio >= 0.45) {
-  //   lux = (4.2785 * ch0 - 1.9548 * ch1);
-  // } else if (ratio < 0.85 && ratio >= 0.64) {
-  //   lux = (0.5926 * ch0 + 0.1185 * ch1);
-  // } else {
-  //   ESP_LOGW(TAG, "Impossible ch1/(ch0 + ch1) ratio");
-  //   lux = 0.0f;
-  // }
-  //  lux = inv_pfactor * lux / als_gain / als_time;
-  
   lux = inv_pfactor * lux / als_gain / als_time;
-  lux2 = inv_pfactor * lux2 / als_gain / als_time;
-  lux3 = inv_pfactor * lux3 / als_gain / als_time;
-  
-  ESP_LOGD(TAG, "Applying integration time/gain constants #1: %f, #2: %f, #3: %f", lux, lux2, lux3);
-
   data.lux = lux;
-  data.lux2 = lux2;
-  data.lux3 = lux3;
 }
 
 void LTRAlsPs501Component::publish_data_part_1_(AlsReadings &data) {
@@ -527,12 +458,6 @@ void LTRAlsPs501Component::publish_data_part_1_(AlsReadings &data) {
   }
   if (this->ambient_light_sensor_ != nullptr) {
     this->ambient_light_sensor_->publish_state(data.lux);
-  }
-  if (this->ambient_light_sensor2_ != nullptr) {
-    this->ambient_light_sensor2_->publish_state(data.lux2);
-  }
-  if (this->ambient_light_sensor3_ != nullptr) {
-    this->ambient_light_sensor3_->publish_state(data.lux3);
   }
   if (this->infrared_counts_sensor_ != nullptr) {
     this->infrared_counts_sensor_->publish_state(data.ch1);
