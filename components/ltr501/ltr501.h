@@ -53,6 +53,8 @@ class LTRAlsPs501Component : public PollingComponent, public i2c::I2CDevice {
   // Sensors setters
   //
   void set_ambient_light_sensor(sensor::Sensor *sensor) { this->ambient_light_sensor_ = sensor; }
+  void set_ambient_light_sensor2(sensor::Sensor *sensor) { this->ambient_light_sensor2_ = sensor; }
+  void set_ambient_light_sensor3(sensor::Sensor *sensor) { this->ambient_light_sensor3_ = sensor; }
   void set_full_spectrum_counts_sensor(sensor::Sensor *sensor) { this->full_spectrum_counts_sensor_ = sensor; }
   void set_infrared_counts_sensor(sensor::Sensor *sensor) { this->infrared_counts_sensor_ = sensor; }
   void set_actual_gain_sensor(sensor::Sensor *sensor) { this->actual_gain_sensor_ = sensor; }
@@ -87,6 +89,8 @@ class LTRAlsPs501Component : public PollingComponent, public i2c::I2CDevice {
     AlsGain501 actual_gain{AlsGain501::GAIN_1};
     IntegrationTime501 integration_time{IntegrationTime501::INTEGRATION_TIME_100MS};
     float lux{0.0f};
+    float lux2{0.0f};
+    float lux3{0.0f};
   } als_readings_;
   uint16_t ps_readings_{0xfffe};
 
@@ -137,6 +141,8 @@ class LTRAlsPs501Component : public PollingComponent, public i2c::I2CDevice {
   sensor::Sensor *infrared_counts_sensor_{nullptr};          // direct reading CH1, infrared only
   sensor::Sensor *full_spectrum_counts_sensor_{nullptr};     // direct reading CH0, infrared + visible light
   sensor::Sensor *ambient_light_sensor_{nullptr};            // calculated lux
+  sensor::Sensor *ambient_light_sensor2_{nullptr};            // calculated lux
+  sensor::Sensor *ambient_light_sensor3_{nullptr};            // calculated lux
   sensor::Sensor *actual_gain_sensor_{nullptr};              // actual gain of reading
   sensor::Sensor *actual_integration_time_sensor_{nullptr};  // actual integration time
   sensor::Sensor *proximity_counts_sensor_{nullptr};         // proximity sensor

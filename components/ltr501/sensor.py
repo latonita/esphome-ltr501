@@ -32,6 +32,8 @@ ICON_PROXIMITY = "mdi:hand-wave-outline"
 
 CONF_ACTUAL_INTEGRATION_TIME = "actual_integration_time"
 CONF_AMBIENT_LIGHT = "ambient_light"
+CONF_AMBIENT_LIGHT2 = "ambient_light2"
+CONF_AMBIENT_LIGHT3 = "ambient_light3"
 CONF_FULL_SPECTRUM_COUNTS = "full_spectrum_counts"
 CONF_INFRARED_COUNTS = "infrared_counts"
 
@@ -159,6 +161,20 @@ CONFIG_SCHEMA = cv.All(
                 }
             ),
             cv.Optional(CONF_AMBIENT_LIGHT): sensor.sensor_schema(
+                unit_of_measurement=UNIT_LUX,
+                icon=ICON_BRIGHTNESS_6,
+                accuracy_decimals=1,
+                device_class=DEVICE_CLASS_ILLUMINANCE,
+                state_class=STATE_CLASS_MEASUREMENT,
+            ),
+            cv.Optional(CONF_AMBIENT_LIGHT2): sensor.sensor_schema(
+                unit_of_measurement=UNIT_LUX,
+                icon=ICON_BRIGHTNESS_6,
+                accuracy_decimals=1,
+                device_class=DEVICE_CLASS_ILLUMINANCE,
+                state_class=STATE_CLASS_MEASUREMENT,
+            ),
+            cv.Optional(CONF_AMBIENT_LIGHT3): sensor.sensor_schema(
                 unit_of_measurement=UNIT_LUX,
                 icon=ICON_BRIGHTNESS_6,
                 accuracy_decimals=1,

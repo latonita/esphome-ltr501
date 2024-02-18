@@ -517,6 +517,8 @@ void LTRAlsPs501Component::apply_lux_calculation_(AlsReadings &data) {
   ESP_LOGD(TAG, "Applying integration time/gain constants #1: %f, #2: %f, #3: %f", lux, lux2, lux3);
 
   data.lux = lux;
+  data.lux2 = lux2;
+  data.lux3 = lux3;
 }
 
 void LTRAlsPs501Component::publish_data_part_1_(AlsReadings &data) {
@@ -525,6 +527,12 @@ void LTRAlsPs501Component::publish_data_part_1_(AlsReadings &data) {
   }
   if (this->ambient_light_sensor_ != nullptr) {
     this->ambient_light_sensor_->publish_state(data.lux);
+  }
+  if (this->ambient_light_sensor2_ != nullptr) {
+    this->ambient_light_sensor2_->publish_state(data.lux2);
+  }
+  if (this->ambient_light_sensor3_ != nullptr) {
+    this->ambient_light_sensor3_->publish_state(data.lux3);
   }
   if (this->infrared_counts_sensor_ != nullptr) {
     this->infrared_counts_sensor_->publish_state(data.ch1);

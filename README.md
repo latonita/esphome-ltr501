@@ -34,6 +34,11 @@ sensor:
       name: "CH0 Full spectrum counts"
     ambient_light:
       name: "Ambient Light"
+    ambient_light2:
+      name: "Ambient Light 2"
+    ambient_light3:
+      name: "Ambient Light 3"
+
 
     ps_counts:
       name: "Proximity counts" 
