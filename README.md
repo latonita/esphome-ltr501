@@ -14,8 +14,8 @@ sensor:
     address: 0x23
     update_interval: 10s
     type: ALS_PS
-    gain: 1x #192x    
-    integration_time: 100ms  #100ms - for both gains, 50ms - 1x only, 200ms and 400ms - 192x only
+    gain: 1x #200x    
+    integration_time: 100ms  #100ms - for both gains, 50ms - 1x only, 200ms and 400ms - 200x only
     ps_gain: 1x
     ps_cooldown: 5s
     # proximity_cooldown: 3 s
@@ -34,11 +34,6 @@ sensor:
       name: "CH0 Full spectrum counts"
     ambient_light:
       name: "Ambient Light"
-    ambient_light2:
-      name: "Ambient Light 2"
-    ambient_light3:
-      name: "Ambient Light 3"
-
 
     ps_counts:
       name: "Proximity counts" 
