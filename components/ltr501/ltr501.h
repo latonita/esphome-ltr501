@@ -14,10 +14,10 @@ namespace ltr501 {
 enum DataAvail : uint8_t { NO_DATA, BAD_DATA, DATA_OK };
 
 enum LtrType : uint8_t {
-  LtrTypeUnknown = 0,
-  LtrTypeAlsOnly = 1,
-  LtrTypePsOnly = 2,
-  LtrTypeAlsAndPs = 3,
+  LTR_TYPE_UNKNOWN = 0,
+  LTR_TYPE_ALS_ONLY = 1,
+  LTR_TYPE_PS_ONLY = 2,
+  LTR_TYPE_ALS_AND_PS = 3,
 };
 
 class LTRAlsPs501Component : public PollingComponent, public i2c::I2CDevice {
@@ -76,7 +76,7 @@ class LTRAlsPs501Component : public PollingComponent, public i2c::I2CDevice {
     KEEP_PUBLISHING
   } state_{State::NOT_INITIALIZED};
 
-  LtrType ltr_type_{LtrType::LtrTypeAlsOnly};
+  LtrType ltr_type_{LtrType::LTR_TYPE_ALS_ONLY};
 
   //
   // Current measurements data
@@ -91,10 +91,10 @@ class LTRAlsPs501Component : public PollingComponent, public i2c::I2CDevice {
   uint16_t ps_readings_{0xfffe};
 
   inline const bool is_als_() const {
-    return this->ltr_type_ == LtrType::LtrTypeAlsOnly || this->ltr_type_ == LtrType::LtrTypeAlsAndPs;
+    return this->ltr_type_ == LtrType::LTR_TYPE_ALS_ONLY || this->ltr_type_ == LtrType::LTR_TYPE_ALS_AND_PS;
   }
   inline const bool is_ps_() const {
-    return this->ltr_type_ == LtrType::LtrTypePsOnly || this->ltr_type_ == LtrType::LtrTypeAlsAndPs;
+    return this->ltr_type_ == LtrType::LTR_TYPE_PS_ONLY || this->ltr_type_ == LtrType::LTR_TYPE_ALS_AND_PS;
   }
 
   //
@@ -120,7 +120,7 @@ class LTRAlsPs501Component : public PollingComponent, public i2c::I2CDevice {
   //
   // Component configuration
   //
-  bool automatic_mode_enabled_{false};
+  bool automatic_mode_enabled_{true};
   AlsGain501 gain_{AlsGain501::GAIN_1};
   IntegrationTime501 integration_time_{IntegrationTime501::INTEGRATION_TIME_100MS};
   MeasurementRepeatRate repeat_rate_{MeasurementRepeatRate::REPEAT_RATE_500MS};

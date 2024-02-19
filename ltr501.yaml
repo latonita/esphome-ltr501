@@ -30,6 +30,7 @@ sensor:
     address: 0x23
     update_interval: 10s
     type: ALS_PS
+    auto_mode: true
     gain: 1x #200x    
     integration_time: 100ms  #100ms - for both gains, 50ms - 1x only, 200ms and 400ms - 200x only
     ps_gain: 1x

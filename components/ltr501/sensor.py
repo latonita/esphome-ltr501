@@ -5,6 +5,7 @@ from esphome.components import i2c, sensor
 from esphome.const import (
     CONF_ID,
     CONF_ACTUAL_GAIN,
+    CONF_AUTO_MODE,
     CONF_GAIN,
     CONF_GLASS_ATTENUATION_FACTOR,
     CONF_INTEGRATION_TIME,
@@ -51,9 +52,9 @@ LTRAlsPsComponent = ltr501_ns.class_(
 
 LtrType = ltr501_ns.enum("LtrType")
 LTR_TYPES = {
-    "ALS": LtrType.LtrTypeAlsOnly,
-    "PS": LtrType.LtrTypePsOnly,
-    "ALS_PS": LtrType.LtrTypeAlsAndPs,
+    "ALS": LtrType.LTR_TYPE_ALS_ONLY,
+    "PS": LtrType.LTR_TYPE_PS_ONLY,
+    "ALS_PS": LtrType.LTR_TYPE_ALS_AND_PS,
 }
 
 AlsGain = ltr501_ns.enum("AlsGain501")
@@ -88,9 +89,7 @@ PS_GAINS = {
     "16X": PsGain.PS_GAIN_16,
 }
 
-LTRPsHighTrigger = ltr501_ns.class_(
-    "LTRPsHighTrigger", automation.Trigger.template()
-)
+LTRPsHighTrigger = ltr501_ns.class_("LTRPsHighTrigger", automation.Trigger.template())
 LTRPsLowTrigger = ltr501_ns.class_("LTRPsLowTrigger", automation.Trigger.template())
 
 
@@ -113,6 +112,7 @@ def validate_time_and_repeat_rate(config):
         )
     return config
 
+
 def validate_als_gain_and_integration_time(config):
     integraton_time = config[CONF_INTEGRATION_TIME]
     if config[CONF_GAIN] == "1X" and integraton_time > 100:
@@ -120,16 +120,16 @@ def validate_als_gain_and_integration_time(config):
             "ALS gain 1X can only be used with integration time 50ms or 100ms"
         )
     if config[CONF_GAIN] == "200X" and integraton_time == 50:
-        raise cv.Invalid(
-            "ALS gain 200X can not be used with integration time 50ms"
-        )
+        raise cv.Invalid("ALS gain 200X can not be used with integration time 50ms")
     return config
+
 
 CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(LTRAlsPsComponent),
             cv.Optional(CONF_TYPE, default="ALS_PS"): cv.enum(LTR_TYPES, upper=True),
+            cv.Optional(CONF_AUTO_MODE, default=True): cv.boolean,
             cv.Optional(CONF_GAIN, default="1X"): cv.enum(ALS_GAINS, upper=True),
             cv.Optional(
                 CONF_INTEGRATION_TIME, default="100ms"
@@ -246,6 +246,7 @@ async def to_code(config):
 
     cg.add(var.set_ltr_type(config[CONF_TYPE]))
 
+    cg.add(var.set_als_auto_mode(config[CONF_AUTO_MODE]))
     cg.add(var.set_als_gain(config[CONF_GAIN]))
     cg.add(var.set_als_integration_time(config[CONF_INTEGRATION_TIME]))
     cg.add(var.set_als_meas_repeat_rate(config[CONF_REPEAT]))

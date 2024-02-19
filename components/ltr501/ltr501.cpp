@@ -12,6 +12,19 @@ static const char *const TAG = "ltr501";
 
 static const uint8_t MAX_TRIES = 5;
 
+struct GainTimePair {
+  AlsGain501 gain;
+  IntegrationTime501 time;
+};
+
+bool operator==(const GainTimePair &lhs, const GainTimePair &rhs) {
+  return lhs.gain == rhs.gain && lhs.time == rhs.time;
+}
+
+bool operator!=(const GainTimePair &lhs, const GainTimePair &rhs) {
+  return !(lhs.gain == rhs.gain && lhs.time == rhs.time);
+}
+
 template<typename T, size_t size> T get_next(const T (&array)[size], const T val) {
   size_t i = 0;
   size_t idx = -1;
@@ -60,7 +73,7 @@ static float get_ps_gain_coeff(PsGain501 gain) {
 }
 
 void LTRAlsPs501Component::setup() {
-  ESP_LOGCONFIG(TAG, "Setting up LTR-501/301");
+  ESP_LOGCONFIG(TAG, "Setting up LTR-501/301/558");
   // As per datasheet we need to wait at least 100ms after power on to get ALS chip responsive
   this->set_timeout(100, [this]() { this->state_ = State::DELAYED_SETUP; });
 }
@@ -68,11 +81,11 @@ void LTRAlsPs501Component::setup() {
 void LTRAlsPs501Component::dump_config() {
   auto get_device_type = [](LtrType typ) {
     switch (typ) {
-      case LtrType::LtrTypeAlsOnly:
+      case LtrType::LTR_TYPE_ALS_ONLY:
         return "ALS only";
-      case LtrType::LtrTypePsOnly:
+      case LtrType::LTR_TYPE_PS_ONLY:
         return "PS only";
-      case LtrType::LtrTypeAlsAndPs:
+      case LtrType::LTR_TYPE_ALS_AND_PS:
         return "Als + PS";
       default:
         return "Unknown";
@@ -99,7 +112,7 @@ void LTRAlsPs501Component::dump_config() {
   LOG_SENSOR("  ", "Actual gain", this->actual_gain_sensor_);
 
   if (this->is_failed()) {
-    ESP_LOGE(TAG, "Communication with I2C LTR-501/301 failed!");
+    ESP_LOGE(TAG, "Communication with I2C LTR-501/301/558 failed!");
   }
 }
 
@@ -238,6 +251,7 @@ bool LTRAlsPs501Component::check_part_number_() {
   // ======================== ========= ===== =================
   // Device                    Part ID   Rev   Capabilities
   // ======================== ========= ===== =================
+  // ltr-558als                 0x08      0    als + ps
   // ltr-501als                 0x08      0    als + ps
   // ltr-301als -               0x08      0    als only
 
@@ -314,10 +328,6 @@ uint16_t LTRAlsPs501Component::read_ps_data_() {
   ps_high.raw = this->reg((uint8_t) CommandRegisters::PS_DATA_1).get();
 
   uint16_t val = encode_uint16(ps_high.ps_data_high, ps_low);
-  //  ESP_LOGD(TAG, "Got sensor data: PS = %5d, Saturation flag = %d", val, ps_high.ps_saturation_flag);
-  // if (ps_high.ps_saturation_flag) {
-  //   return 0x7ff;  // full 11 bit range
-  // }
   return val;
 }
 
@@ -360,45 +370,42 @@ void LTRAlsPs501Component::read_sensor_data_(AlsReadings &data) {
 }
 
 bool LTRAlsPs501Component::are_adjustments_required_(AlsReadings &data) {
-  // for ltr-501/301 we dont do auto adjustments yet
-  return false;
-  /*
   // skip first sample in auto mode -
   // we need to reconfigure device after last measurement
   if (!this->automatic_mode_enabled_)
     return false;
 
-  // Recommended thresholds as per datasheet
-  static const uint16_t LOW_INTENSITY_THRESHOLD = 1000;
-  static const uint16_t HIGH_INTENSITY_THRESHOLD = 20000;
-  static const AlsGain501 GAINS[GAINS_COUNT] = {AlsGain501::GAIN_1, AlsGain501::GAIN_200};
-  static const IntegrationTime501 INT_TIMES[TIMES_COUNT] = {
-      INTEGRATION_TIME_50MS,  INTEGRATION_TIME_100MS, INTEGRATION_TIME_200MS,INTEGRATION_TIME_400MS};
+  // available combinations of gain and integration times:
+  static const GainTimePair GAIN_TIME_PAIRS[] = {
+      {AlsGain501::GAIN_1, INTEGRATION_TIME_50MS},    {AlsGain501::GAIN_1, INTEGRATION_TIME_100MS},
+      {AlsGain501::GAIN_200, INTEGRATION_TIME_100MS}, {AlsGain501::GAIN_200, INTEGRATION_TIME_200MS},
+      {AlsGain501::GAIN_200, INTEGRATION_TIME_400MS},
+  };
+
+  static const uint16_t HIGH_INTENSITY_THRESHOLD = 25000;
+  static const uint16_t LOW_INTENSITY_THRESHOLD_1 = 100;
+  static const uint16_t LOW_INTENSITY_THRESHOLD_200 = 2000;
+
+  const uint16_t LOW_INTENSITY_THRESHOLD =
+      (data.actual_gain == AlsGain501::GAIN_1 ? LOW_INTENSITY_THRESHOLD_1 : LOW_INTENSITY_THRESHOLD_200);
+
+  GainTimePair current_pair = {data.actual_gain, data.integration_time};
 
   if (data.ch0 <= LOW_INTENSITY_THRESHOLD) {
-    AlsGain501 next_gain = get_next(GAINS, data.actual_gain);
-    if (next_gain != data.actual_gain) {
-      data.actual_gain = next_gain;
-      ESP_LOGD(TAG, "Low illuminance. Increasing gain.");
+    GainTimePair next_pair = get_next(GAIN_TIME_PAIRS, current_pair);
+    if (next_pair != current_pair) {
+      data.actual_gain = next_pair.gain;
+      data.integration_time = next_pair.time;
+      ESP_LOGD(TAG, "Low illuminance. Increasing sensitivity.");
       return true;
     }
-    IntegrationTime501 next_time = get_next(INT_TIMES, data.integration_time);
-    if (next_time != data.integration_time) {
-      data.integration_time = next_time;
-      ESP_LOGD(TAG, "Low illuminance. Increasing integration time.");
-      return true;
-    }
+
   } else if (data.ch0 >= HIGH_INTENSITY_THRESHOLD) {
-    AlsGain501 prev_gain = get_prev(GAINS, data.actual_gain);
-    if (prev_gain != data.actual_gain) {
-      data.actual_gain = prev_gain;
-      ESP_LOGD(TAG, "High illuminance. Decreasing gain.");
-      return true;
-    }
-    IntegrationTime501 prev_time = get_prev(INT_TIMES, data.integration_time);
-    if (prev_time != data.integration_time) {
-      data.integration_time = prev_time;
-      ESP_LOGD(TAG, "High illuminance. Decreasing integration time.");
+    GainTimePair prev_pair = get_prev(GAIN_TIME_PAIRS, current_pair);
+    if (prev_pair != current_pair) {
+      data.actual_gain = prev_pair.gain;
+      data.integration_time = prev_pair.time;
+      ESP_LOGD(TAG, "High illuminance. Decreasing sensitivity.");
       return true;
     }
   } else {
@@ -407,7 +414,6 @@ bool LTRAlsPs501Component::are_adjustments_required_(AlsReadings &data) {
   }
   ESP_LOGD(TAG, "Can't adjust sensitivity anymore.");
   return false;
-  */
 }
 
 void LTRAlsPs501Component::apply_lux_calculation_(AlsReadings &data) {
@@ -445,7 +451,7 @@ void LTRAlsPs501Component::apply_lux_calculation_(AlsReadings &data) {
     lux = 1.6903 * ch0 - 0.1693 * ch1;
   } else {
     ESP_LOGW(TAG, "Impossible ch1/(ch0 + ch1) ratio");
-    lux = 0;
+    lux = 0.0f;
   }
 
   lux = inv_pfactor * lux / als_gain / als_time;
