@@ -84,17 +84,17 @@ class LTRAlsPs501Component : public PollingComponent, public i2c::I2CDevice {
   struct AlsReadings {
     uint16_t ch0{0};
     uint16_t ch1{0};
-    AlsGain501 actual_gain{AlsGain501::GAIN_1};
+    AlsGain501 gain{AlsGain501::GAIN_1};
     IntegrationTime501 integration_time{IntegrationTime501::INTEGRATION_TIME_100MS};
     float lux{0.0f};
     uint8_t number_of_adjustments{0};
   } als_readings_;
   uint16_t ps_readings_{0xfffe};
 
-  inline const bool is_als_() const {
+  inline bool is_als_() const {
     return this->ltr_type_ == LtrType::LTR_TYPE_ALS_ONLY || this->ltr_type_ == LtrType::LTR_TYPE_ALS_AND_PS;
   }
-  inline const bool is_ps_() const {
+  inline bool is_ps_() const {
     return this->ltr_type_ == LtrType::LTR_TYPE_PS_ONLY || this->ltr_type_ == LtrType::LTR_TYPE_ALS_AND_PS;
   }
 
@@ -158,11 +158,11 @@ class LTRAlsPs501Component : public PollingComponent, public i2c::I2CDevice {
   CallbackManager<void()> on_ps_high_trigger_callback_;
   CallbackManager<void()> on_ps_low_trigger_callback_;
 
-  void add_on_ps_high_trigger_callback(std::function<void()> callback) {
+  void add_on_ps_high_trigger_callback_(std::function<void()> callback) {
     this->on_ps_high_trigger_callback_.add(std::move(callback));
   }
 
-  void add_on_ps_low_trigger_callback(std::function<void()> callback) {
+  void add_on_ps_low_trigger_callback_(std::function<void()> callback) {
     this->on_ps_low_trigger_callback_.add(std::move(callback));
   }
 };
@@ -170,14 +170,14 @@ class LTRAlsPs501Component : public PollingComponent, public i2c::I2CDevice {
 class LTRPsHighTrigger : public Trigger<> {
  public:
   explicit LTRPsHighTrigger(LTRAlsPs501Component *parent) {
-    parent->add_on_ps_high_trigger_callback([this]() { this->trigger(); });
+    parent->add_on_ps_high_trigger_callback_([this]() { this->trigger(); });
   }
 };
 
 class LTRPsLowTrigger : public Trigger<> {
  public:
   explicit LTRPsLowTrigger(LTRAlsPs501Component *parent) {
-    parent->add_on_ps_low_trigger_callback([this]() { this->trigger(); });
+    parent->add_on_ps_low_trigger_callback_([this]() { this->trigger(); });
   }
 };
 }  // namespace ltr501
